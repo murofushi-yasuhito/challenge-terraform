@@ -201,3 +201,19 @@ resource "aws_lb_listener" "test_listener" {
     target_group_arn = aws_lb_target_group.main.arn
   }
 }
+
+data "aws_route53_zone" "main" {
+  name = "fudomae.com"
+}
+
+resource "aws_route53_record" "www" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = data.aws_route53_zone.main.name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
