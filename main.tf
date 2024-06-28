@@ -82,6 +82,8 @@ resource "aws_instance" "web" {
   subnet_id              = aws_subnet.subnet_a.id
   vpc_security_group_ids = [aws_security_group.allow_http.id]
 
+  iam_instance_profile = aws_iam_instance_profile.assume_role_profile.name
+
   tags = {
     Name = "challenge-terraform"
   }
@@ -114,4 +116,30 @@ resource "aws_security_group" "allow_http" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_iam_role" "assume_role" {
+  name = "assume_role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Effect = "Allow",
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_policy_attachment" {
+  role       = aws_iam_role.assume_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "assume_role_profile" {
+  name = "assume_role_profile"
+  role = aws_iam_role.assume_role.name
 }
