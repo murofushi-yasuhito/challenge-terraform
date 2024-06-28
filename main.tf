@@ -143,3 +143,61 @@ resource "aws_iam_instance_profile" "assume_role_profile" {
   name = "assume_role_profile"
   role = aws_iam_role.assume_role.name
 }
+
+resource "aws_lb" "main" {
+  name               = "main-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow_http.id]
+
+  subnets = [
+    aws_subnet.subnet_a.id,
+    aws_subnet.subnet_b.id
+  ]
+  #   enable_deletion_protection = false // 削除保護を無効にする
+
+  tags = {
+    Environment = "challenge-terraform"
+  }
+}
+
+resource "aws_lb_target_group" "main" {
+  name             = "main-target-group"
+  target_type      = "instance"
+  protocol_version = "HTTP1"
+  port             = 80
+  protocol         = "HTTP"
+
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "challenge-terraform"
+  }
+
+  health_check {
+    interval            = 10
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 3
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200,301"
+  }
+}
+
+resource "aws_lb_target_group_attachment" "main" {
+  target_group_arn = aws_lb_target_group.main.arn
+  target_id        = aws_instance.web.id
+}
+
+resource "aws_lb_listener" "test_listener" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+}
